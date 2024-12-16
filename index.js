@@ -3,19 +3,20 @@ const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const bodyParser = require('body-parser');
+require('dotenv').config();
 
 // Настройки базы данных
 const pool = new Pool({
-  user: 'postgres',
-  host: 'localhost',
-  database: 'sklad',
-  password: 'admin',
-  port: 5432,
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_DATABASE,
+  password: process.env.DB_PASSWORD,
+  port: process.env.DB_PORT,
 });
 
 // Инициализация приложения
 const app = express();
-app.use(cors({ origin: 'http://localhost:3001' }));
+app.use(cors({ origin: process.env.ORIGIN }));
 app.use(bodyParser.json());
 
 // Создание таблицы trains

@@ -16,7 +16,8 @@ const pool = new Pool({
 
 // Инициализация приложения
 const app = express();
-app.use(cors({ origin: process.env.ORIGIN }));
+// app.use(cors({ origin: process.env.ORIGIN }));
+app.use(cors());
 app.use(bodyParser.json());
 
 // Создание таблицы trains

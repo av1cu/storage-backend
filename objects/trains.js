@@ -1,14 +1,13 @@
 // objects/trains.js
 
-const express = require("express");
-const bodyParser = require("body-parser");
-const { Pool } = require("pg");
+const express = require('express');
+const bodyParser = require('body-parser');
+const { Pool } = require('pg');
 const cors = require('cors');
 
 const router = express();
 router.use(bodyParser.json());
 router.use(cors()); // Разрешить все источники
-
 
 // Настройки базы данных
 const pool = new Pool({
@@ -18,7 +17,6 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD,
   port: process.env.DB_PORT,
 });
-
 
 // Создание таблицы trains
 const createTable = async () => {
@@ -136,32 +134,34 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
   const {
-    wagonNumber,
-    wagonType,
+    wagonnumber,
+    wagontype,
     customer,
     contract,
-    repairStart,
+    repairstart,
     repairEnd,
-    repairType,
+    repairtype,
     workgroup,
     workname,
     executor,
+    status,
   } = req.body;
 
   try {
     const result = await pool.query(
-      'UPDATE trains SET wagonNumber = $1, wagonType = $2, customer = $3, contract = $4, repairStart = $5, repairEnd = $6, repairType = $7, workgroup = $8, workname = $9, executor = $10 WHERE id = $11 RETURNING *',
+      'UPDATE trains SET wagonnumber = $1, wagontype = $2, customer = $3, contract = $4, repairstart = $5, repairend = $6, repairtype = $7, workgroup = $8, workname = $9, executor = $10, status = $11 WHERE id = $12 RETURNING *',
       [
-        wagonNumber,
-        wagonType,
+        wagonnumber,
+        wagontype,
         customer,
         contract,
-        repairStart,
+        repairstart,
         repairEnd,
-        repairType,
+        repairtype,
         workgroup,
         workname,
         executor,
+        status,
         id,
       ]
     );

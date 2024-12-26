@@ -48,7 +48,7 @@ router.get('/', async (req, res) => {
     const formattedData = result.rows.map((row) => {
       // Форматируем workgroupstatus в удобный вид
       const formattedWorkgroupStatus = row.workgroupstatus
-        ? JSON.parse(row.workgroupstatus).map((item) => ({
+        ? row.workgroupstatus.map((item) => ({
             value: item.value,
             status: item.status,
           }))
@@ -88,7 +88,9 @@ router.get('/', async (req, res) => {
     });
     res.json(formattedData);
   } catch (err) {
+    console.log(err);
     res.status(500).json({ error: 'Failed to fetch trains' });
+    // res.status(500).json({ error: err });
   }
 });
 
@@ -155,6 +157,7 @@ router.post('/', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to create train' });
+    // res.status(500).json({ error: err });
   }
 });
 

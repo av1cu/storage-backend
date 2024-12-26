@@ -1,14 +1,13 @@
 // objects/trains.js
 
-const express = require("express");
-const bodyParser = require("body-parser");
-const { Pool } = require("pg");
+const express = require('express');
+const bodyParser = require('body-parser');
+const { Pool } = require('pg');
 const cors = require('cors');
 
 const router = express();
 router.use(bodyParser.json());
 router.use(cors()); // Разрешить все источники
-
 
 // Настройки базы данных
 const pool = new Pool({
@@ -18,7 +17,6 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD,
   port: process.env.DB_PORT,
 });
-
 
 // Создание таблицы trains
 const createTable = async () => {
@@ -38,8 +36,7 @@ const createTable = async () => {
       executor VARCHAR(255),
       comment TEXT,
       status VARCHAR(255)
-    );`
-  ;
+    );`;
   await pool.query(query);
 };
 
@@ -51,7 +48,7 @@ router.get('/', async (req, res) => {
     const formattedData = result.rows.map((row) => {
       // Форматируем workgroupstatus в удобный вид
       const formattedWorkgroupStatus = row.workgroupstatus
-        ? JSON.parse(row.workgroupstatus).map(item => ({
+        ? JSON.parse(row.workgroupstatus).map((item) => ({
             value: item.value,
             status: item.status,
           }))
@@ -81,9 +78,10 @@ router.get('/', async (req, res) => {
           // Добавляем workgroupstatus
           {
             label: 'Статус группы работ',
-            value: formattedWorkgroupStatus.length > 0
-              ? formattedWorkgroupStatus
-              : 'Нет статусов',
+            value:
+              formattedWorkgroupStatus.length > 0
+                ? formattedWorkgroupStatus
+                : 'Нет статусов',
           },
         ],
       };
@@ -93,7 +91,6 @@ router.get('/', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch trains' });
   }
 });
-
 
 // 2. Получение записи по ID
 router.get('/:id', async (req, res) => {
@@ -135,7 +132,7 @@ router.post('/', async (req, res) => {
 
     const result = await pool.query(
       `INSERT INTO trains (
-        wagonnumber, wagontype, customer, contract, repairstart, repairend, repairtype, workgroup, workname, executor, comment, status, workgroupstatus
+        wagonNumber, wagonType, customer, contract, repairStart, repairEnd, repairType, workgroup, workname, executor, comment, status, workgroupStatus
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
       [
         wagonnumber,
@@ -161,7 +158,6 @@ router.post('/', async (req, res) => {
   }
 });
 
-
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
   const {
@@ -175,7 +171,7 @@ router.put('/:id', async (req, res) => {
     workgroup,
     workname,
     executor,
-    workgroupStatus,  // Новое поле для обновления workGroupStatus
+    workgroupStatus, // Новое поле для обновления workGroupStatus
   } = req.body;
 
   try {
@@ -184,21 +180,23 @@ router.put('/:id', async (req, res) => {
       `SELECT workgroupstatus FROM trains WHERE id = $1`,
       [id]
     );
-    
+
     if (currentDataResult.rows.length === 0) {
       return res.status(404).json({ error: 'Train not found' });
     }
 
-    let updatedWorkgroupStatus = currentDataResult.rows[0].workgroupstatus || [];
+    let updatedWorkgroupStatus =
+      currentDataResult.rows[0].workgroupstatus || [];
 
     // Если workgroupStatus передан, обновляем его
     if (workgroupStatus && workgroupStatus.length > 0) {
       // Обновляем статус в переданном workgroupStatus
-      updatedWorkgroupStatus = updatedWorkgroupStatus.map(item => {
-        if (workgroupStatus.some(ws => ws.value === item.value)) {
+      updatedWorkgroupStatus = updatedWorkgroupStatus.map((item) => {
+        if (workgroupStatus.some((ws) => ws.value === item.value)) {
           return {
             ...item,
-            status: workgroupStatus.find(ws => ws.value === item.value).status
+            status: workgroupStatus.find((ws) => ws.value === item.value)
+              .status,
           };
         }
         return item;
@@ -236,7 +234,7 @@ router.put('/:id', async (req, res) => {
         workgroup,
         workname,
         executor,
-        updatedWorkgroupStatusJson,  // передаем строку JSON
+        updatedWorkgroupStatusJson, // передаем строку JSON
         id,
       ]
     );
@@ -250,11 +248,11 @@ router.put('/:id', async (req, res) => {
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Internal server error', details: err.message });
+    res
+      .status(500)
+      .json({ error: 'Internal server error', details: err.message });
   }
 });
-
-
 
 // 5. Удаление записи по ID
 router.delete('/:id', async (req, res) => {

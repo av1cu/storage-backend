@@ -175,6 +175,7 @@ router.put('/:id', async (req, res) => {
     workname,
     executor,
     workgroupStatus, // Новое поле для обновления workGroupStatus
+    status,
   } = req.body;
 
   try {
@@ -223,8 +224,9 @@ router.put('/:id', async (req, res) => {
          workgroup = $8,
          workname = $9,
          executor = $10,
-         workgroupstatus = $11
-       WHERE id = $12
+         workgroupstatus = $11,
+         status = $12,
+       WHERE id = $13
        RETURNING *`,
       [
         wagonNumber,
@@ -238,6 +240,7 @@ router.put('/:id', async (req, res) => {
         workname,
         executor,
         updatedWorkgroupStatusJson, // передаем строку JSON
+        status,
         id,
       ]
     );

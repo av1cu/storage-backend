@@ -49,13 +49,13 @@ router.get('/', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM trains');
     const formattedData = result.rows.map((row) => {
-      // Форматируем workgroupstatus в удобный вид
-      const formattedWorkgroupStatus = row.workgroupstatus
-        ? JSON.parse(row.workgroupstatus).map(item => ({
+      
+      const formattedWorkgroupStatus = Array.isArray(row.workgroupstatus) && row.workgroupstatus.length > 0
+        ? row.workgroupstatus.map(item => ({
             value: item.value,
             status: item.status,
           }))
-        : []; // Если workgroupstatus не существует, возвращаем пустой массив
+        : [];
 
       return {
         id: row.id,
@@ -78,7 +78,6 @@ router.get('/', async (req, res) => {
           { label: 'Примечание', value: row.note || 'Нет примечаний' },
           { label: 'Статус', value: row.status || 'Не определён' },
           { label: 'Исполнитель', value: row.executor },
-          // Добавляем workgroupstatus
           {
             label: 'Статус группы работ',
             value: formattedWorkgroupStatus.length > 0
@@ -90,9 +89,10 @@ router.get('/', async (req, res) => {
     });
     res.json(formattedData);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch trains' });
+    res.status(500).json({ error: err.message || 'Неизвестная ошибка' });
   }
 });
+
 
 
 // 2. Получение записи по ID

@@ -225,7 +225,7 @@ router.put('/:id', async (req, res) => {
          workname = $9,
          executor = $10,
          workgroupstatus = $11,
-         status = $12,
+         status = $12
        WHERE id = $13
        RETURNING *`,
       [

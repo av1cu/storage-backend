@@ -1,19 +1,10 @@
 const express = require("express");
 const multer = require("multer");
-const { Pool } = require("pg");
 const path = require("path");
 const fs = require("fs");
+const pool = require("../config/db"); // <-- Импортируем общее подключение
 
 const router = express.Router();
-
-// Настройка базы данных
-const pool = new Pool({
-    user: process.env.DB_USER,
-    host: process.env.DB_HOST,
-    database: process.env.DB_DATABASE,
-    password: process.env.DB_PASSWORD,
-    port: process.env.DB_PORT,
-});
 
 const createTable = async () => {
     try {

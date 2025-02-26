@@ -172,7 +172,7 @@ router.put('/:id', async (req, res) => {
   try {
     // Получаем текущие данные из базы
     const currentDataResult = await pool.query(
-      `SELECT workgroupstatus FROM trains WHERE id = $1`,
+      `SELECT workgroupstatus, status FROM trains WHERE id = $1`,
       [id]
     );
     
@@ -181,6 +181,7 @@ router.put('/:id', async (req, res) => {
     }
 
     let updatedWorkgroupStatus = currentDataResult.rows[0].workgroupstatus || [];
+    let currentStatus = currentDataResult.rows[0].status || '';  // Текущий статус вагона
 
     // Если workgroupStatus передан, обновляем его
     if (workgroupStatus && workgroupStatus.length > 0) {
@@ -194,6 +195,18 @@ router.put('/:id', async (req, res) => {
         }
         return item;
       });
+    }
+
+    // Логика для вычисления статуса вагона
+    let newWagonStatus = 'Не начато'; // По умолчанию статус "Не начато"
+    
+    // Проверяем все статусы групп работ
+    const allStatuses = updatedWorkgroupStatus.map(item => item.status);
+    
+    if (allStatuses.every(status => status === 'Готово')) {
+      newWagonStatus = 'Готово';  // Если все группы в статусе "Готово"
+    } else if (allStatuses.includes('В процессе')) {
+      newWagonStatus = 'В процессе';  // Если хотя бы одна группа в процессе
     }
 
     // Преобразуем updatedWorkgroupStatus в строку JSON
@@ -213,8 +226,9 @@ router.put('/:id', async (req, res) => {
          workgroup = $8,
          workname = $9,
          executor = $10,
-         workgroupstatus = $11
-       WHERE id = $12
+         workgroupstatus = $11,
+         status = $12  -- Обновляем статус вагона
+       WHERE id = $13
        RETURNING *`,
       [
         wagonNumber,
@@ -228,6 +242,7 @@ router.put('/:id', async (req, res) => {
         workname,
         executor,
         updatedWorkgroupStatusJson,  // передаем строку JSON
+        newWagonStatus,  // передаем новый статус вагона
         id,
       ]
     );
@@ -244,6 +259,7 @@ router.put('/:id', async (req, res) => {
     res.status(500).json({ error: 'Internal server error', details: err.message });
   }
 });
+
 
 
 

@@ -133,7 +133,7 @@ router.get("/:wagonNumber/exist", async (req, res) => {
             return res.status(404).json({ exists: false, message: "Файл не найден" });
         }
 
-        res.status(200).json({ exists: true, message: "Файл существует" });
+        res.status(200).json({ exists:   true, message: "Файл существует" });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Ошибка при проверке наличия файла" });

@@ -1,6 +1,6 @@
 
 const express = require('express');
-const { login,register } = require('../auth/authController');
+const { login,register,changePassword } = require('../auth/authController');
 const router = express.Router();
 const pool = require("../config/db");
 
@@ -29,5 +29,6 @@ createTable();
 // Маршрут для логина
 router.post('/login', login);
 router.post('/register', register);
+router.put('/changepassword',changePassword)
 
 module.exports = router;

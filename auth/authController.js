@@ -75,6 +75,52 @@ const register = async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+// Логика смены пароля
+const changePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  
+  const token = req.headers['authorization']?.split(' ')[1]; // Получаем токен
+  if (!token) {
+    return res.status(401).json({ message: 'Токен не предоставлен' });
+  }
+
+  try {
+    // Получение данных
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const username = decoded.username;
+
+    console.log(username);  // Используйте эти данные в логике
+
+    // Получаем пользователя по имени
+    const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]); // Передаем параметр как массив
+    const user = result.rows[0];
+
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
+    }
+
+    // Проверяем правильность текущего пароля
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Invalid current password' });
+    }
+
+    // Хешируем новый пароль
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    // Обновляем пароль пользователя в базе данных
+    await pool.query(
+      'UPDATE users SET password = $1 WHERE username = $2',
+      [hashedNewPassword, username] // Передаем параметры как массив
+    );
+
+    res.json({ message: 'Password successfully changed' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
 
 
-module.exports = { login,register };
+module.exports = { login, register, changePassword };
+

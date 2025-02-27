@@ -2,6 +2,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require('cors');
 const pool = require("../config/db"); // <-- Импортируем общее подключение
+const authenticate = require('../auth/authorization'); 
 
 const app = express();
 app.use(bodyParser.json());
@@ -39,7 +40,7 @@ const createTable = async () => {
 // Вызов инициализации перед запуском сервера
 createTable();
 
-app.post("/", async (req, res) => {
+app.post("/",authenticate, async (req, res) => {
   console.log("received post method body:", req.body);
   try {
     const {
@@ -96,7 +97,7 @@ app.post("/", async (req, res) => {
 
 
 // READ: Получить все записи
-app.get("/", async (req, res) => {
+app.get("/",authenticate, async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM wagons");
     // Преобразуем строковое представление массива обратно в массив
@@ -130,7 +131,7 @@ app.get("/:id", async (req, res) => {
 });
 
 // UPDATE: Обновить запись
-app.put("/:id", async (req, res) => {
+app.put("/:id",authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -190,7 +191,7 @@ app.put("/:id", async (req, res) => {
 });
 
 // DELETE: Удалить запись
-app.delete("/:id", async (req, res) => {
+app.delete("/:id",authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query("DELETE FROM wagons WHERE id = $1 RETURNING *", [id]);

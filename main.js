@@ -15,11 +15,12 @@ app.use(bodyParser.json());
 const trainsRouter = require('./objects/trains');
 const calculationsRouter = require('./objects/calculations');
 const filesRouter = require("./objects/files");
+const authRouter = require("./objects/auth")
 // Используем маршруты из модуля trains
 app.use('/trains', trainsRouter);
 app.use('/calculations', calculationsRouter);
 app.use("/files", filesRouter);
-
+app.use("/auth",authRouter)
 
 // Запуск сервера
 const PORT = process.env.PORT;

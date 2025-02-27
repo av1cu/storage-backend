@@ -6,6 +6,8 @@ const { Pool } = require("pg");
 const cors = require('cors');
 const pool = require("../config/db"); // <-- Импортируем общее подключение
 const router = express();
+const authenticate = require('../auth/authorization'); 
+
 router.use(bodyParser.json());
 router.use(cors()); // Разрешить все источники
 
@@ -36,7 +38,7 @@ const createTable = async () => {
 
 createTable().catch((err) => console.error('Error creating table:', err));
 
-router.get('/', async (req, res) => {
+router.get('/',authenticate, async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM trains');
     const formattedData = result.rows.map((row) => {
@@ -87,7 +89,7 @@ router.get('/', async (req, res) => {
 
 
 // 2. Получение записи по ID
-router.get('/:id', async (req, res) => {
+router.get('/:id',authenticate, async (req, res) => {
   const { id } = req.params;
   try {
     const result = await pool.query('SELECT * FROM trains WHERE id = $1', [id]);
@@ -100,7 +102,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/',authenticate, async (req, res) => {
   const {
     wagonnumber,
     wagontype,
@@ -153,7 +155,7 @@ router.post('/', async (req, res) => {
 });
 
 
-router.put('/:id', async (req, res) => {
+router.put('/:id',authenticate, async (req, res) => {
   const { id } = req.params;
   const {
     wagonNumber,
@@ -264,7 +266,7 @@ router.put('/:id', async (req, res) => {
 
 
 // 5. Удаление записи по ID
-router.delete('/:id', async (req, res) => {
+router.delete('/:id',authenticate, async (req, res) => {
   const { id } = req.params;
   try {
     const result = await pool.query(

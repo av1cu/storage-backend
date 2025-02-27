@@ -3,6 +3,7 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const pool = require("../config/db"); // <-- Импортируем общее подключение
+const authenticate = require('../auth/authorization'); 
 
 const router = express.Router();
 
@@ -45,7 +46,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-router.post("/upload", upload.single("file"), async (req, res) => {
+router.post("/upload",authenticate, upload.single("file"), async (req, res) => {
     if (!req.file || !req.body.wagonNumber) {
         return res.status(400).json({ error: "Файл и номер вагона обязательны" });
     }
@@ -76,7 +77,7 @@ router.post("/upload", upload.single("file"), async (req, res) => {
 
 
 // Получение и скачивание последнего загруженного файла
-router.get("/:wagonNumber", async (req, res) => {
+router.get("/:wagonNumber",authenticate, async (req, res) => {
     const { wagonNumber } = req.params;
 
     try {
@@ -120,7 +121,7 @@ router.get("/:wagonNumber", async (req, res) => {
 });
 
 // Проверка наличия файла для конкретного вагона
-router.get("/:wagonNumber/exist", async (req, res) => {
+router.get("/:wagonNumber/exist",authenticate, async (req, res) => {
     const { wagonNumber } = req.params;
 
     try {
@@ -142,7 +143,7 @@ router.get("/:wagonNumber/exist", async (req, res) => {
 
 
 // Удаление файла (из БД и с диска)
-router.delete("/:id", async (req, res) => {
+router.delete("/:id",authenticate, async (req, res) => {
     const { id } = req.params;
     try {
         const fileResult = await pool.query("SELECT filename FROM files WHERE wagon_id = $1", [id]);

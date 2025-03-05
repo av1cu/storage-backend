@@ -46,12 +46,13 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-router.post("/upload",authenticate, upload.single("file"), async (req, res) => {
+// Загрузка файла
+router.post("/upload", authenticate, upload.single("file"), async (req, res) => {
     if (!req.file || !req.body.wagonNumber) {
         return res.status(400).json({ error: "Файл и номер вагона обязательны" });
     }
 
-    const { newFilename } = req.file; // <-- берем новое имя
+    const { newFilename } = req.file;
     const { wagonNumber } = req.body;
 
     try {
@@ -61,12 +62,18 @@ router.post("/upload",authenticate, upload.single("file"), async (req, res) => {
             return res.status(404).json({ error: "Вагон не найден" });
         }
 
-
         // Сохраняем в БД новое имя файла
         const result = await pool.query(
             "INSERT INTO files (filename, wagon_id) VALUES ($1, $2) RETURNING *",
-            [newFilename, wagonNumber] // <-- Сохраняем новое имя, а не originalname
+            [newFilename, wagonNumber]
         );
+
+        // Формируем сообщение для Telegram
+        const message = `📤 Файл загружен для вагона ${wagonNumber}.
+📝 Новый файл: ${newFilename}`;
+
+        // Отправка сообщения в Telegram
+        telegram(message);
 
         return res.status(201).json({ message: "Файл загружен", file: result.rows[0] });
     } catch (err) {
@@ -74,6 +81,7 @@ router.post("/upload",authenticate, upload.single("file"), async (req, res) => {
         return res.status(500).json({ error: "Ошибка при сохранении файла в БД" });
     }
 });
+
 
 
 // Получение и скачивание последнего загруженного файла
@@ -143,25 +151,33 @@ router.get("/:wagonNumber/exist",authenticate, async (req, res) => {
 
 
 // Удаление файла (из БД и с диска)
-router.delete("/:id",authenticate, async (req, res) => {
+// Удаление файла
+router.delete("/:id", authenticate, async (req, res) => {
     const { id } = req.params;
     try {
-        const fileResult = await pool.query("SELECT filename FROM files WHERE wagon_id = $1", [id]);
+        const fileResult = await pool.query("SELECT filename, wagon_id FROM files WHERE id = $1", [id]);
 
         if (fileResult.rows.length === 0) {
             return res.status(404).json({ error: "Файл не найден в базе данных" });
         }
 
-        const filename = fileResult.rows[0].filename;
+        const { filename, wagon_id } = fileResult.rows[0];
         const filePath = path.join(uploadDir, filename);
 
         // Удаляем запись из БД
-        await pool.query("DELETE FROM files WHERE wagon_id = $1", [id]);
+        await pool.query("DELETE FROM files WHERE id = $1", [id]);
 
         // Удаляем файл с диска
         if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
         }
+
+        // Формируем сообщение для Telegram
+        const message = `🗑️ Файл удалён для вагона ${wagon_id}.
+📝 Удалён файл: ${filename}`;
+
+        // Отправка сообщения в Telegram
+        telegram(message);
 
         res.json({ message: "Файл успешно удалён" });
     } catch (err) {
@@ -169,5 +185,6 @@ router.delete("/:id",authenticate, async (req, res) => {
         res.status(500).json({ error: "Ошибка при удалении файла" });
     }
 });
+
 
 module.exports = router;

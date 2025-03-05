@@ -40,7 +40,8 @@ const createTable = async () => {
 // Вызов инициализации перед запуском сервера
 createTable();
 
-app.post("/",authenticate, async (req, res) => {
+// POST: Создание записи
+app.post("/", authenticate, async (req, res) => {
   console.log("received post method body:", req.body);
   try {
     const {
@@ -62,7 +63,16 @@ app.post("/",authenticate, async (req, res) => {
       "totalWithVAT": totalWithVAT
     } = req.body;
 
-    // Убедитесь, что вы передаете все данные
+    // Логирование данных в консоль (или можно отправить в Telegram)
+    const message = `📥 Создана запись для вагона ${wagonNumber}.\n
+    Тип вагона: ${wagonType}, Заказчик: ${customer}, Тип ремонта: ${repairType}, 
+    Начало ремонта: ${startRepair}, Конец ремонта: ${endRepair}, Общая стоимость: ${total}, 
+    Стоимость с НДС: ${totalWithVAT}`;
+    
+    // Отправка сообщения в Telegram (если нужно)
+    telegram(message);
+
+    // Вставка данных в базу данных
     const result = await pool.query(
       `INSERT INTO wagons (
         wagon_number, wagon_type, customer, start_repair, end_repair, repair_type, 
@@ -76,7 +86,7 @@ app.post("/",authenticate, async (req, res) => {
         startRepair,
         endRepair,
         repairType,
-        JSON.stringify(workGroup), // Сохраняем массив как строку
+        JSON.stringify(workGroup),
         workName,
         workCost,
         materialCost,
@@ -94,6 +104,7 @@ app.post("/",authenticate, async (req, res) => {
     res.status(500).send("Ошибка при добавлении записи");
   }
 });
+
 
 
 // READ: Получить все записи
@@ -130,8 +141,8 @@ app.get("/:id", async (req, res) => {
   }
 });
 
-// UPDATE: Обновить запись
-app.put("/:id",authenticate, async (req, res) => {
+// PUT: Обновить запись
+app.put("/:id", authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -153,6 +164,17 @@ app.put("/:id",authenticate, async (req, res) => {
       "totalWithVAT": totalWithVAT
     } = req.body;
 
+    // Логирование изменений в консоль (или отправка в Telegram)
+    const message = `🔄 Обновление записи для вагона ${wagonNumber}.
+    Изменения: 
+    Тип вагона: ${wagonType}, Заказчик: ${customer}, Тип ремонта: ${repairType}, 
+    Начало ремонта: ${startRepair}, Конец ремонта: ${endRepair}, Общая стоимость: ${total}, 
+    Стоимость с НДС: ${totalWithVAT}`;
+    
+    // Отправка сообщения в Telegram (если нужно)
+    telegram(message);
+
+    // Обновление данных в базе данных
     const result = await pool.query(
       `UPDATE wagons SET
         wagon_number = $1, wagon_type = $2, customer = $3, start_repair = $4, 
@@ -167,7 +189,7 @@ app.put("/:id",authenticate, async (req, res) => {
         startRepair,
         endRepair,
         repairType,
-        JSON.stringify(workGroup), // Обновляем массив как строку
+        JSON.stringify(workGroup),
         workName,
         workCost,
         materialCost,
@@ -190,19 +212,32 @@ app.put("/:id",authenticate, async (req, res) => {
   }
 });
 
+
 // DELETE: Удалить запись
-app.delete("/:id",authenticate, async (req, res) => {
+app.delete("/:id", authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query("DELETE FROM wagons WHERE id = $1 RETURNING *", [id]);
+
     if (result.rows.length === 0) {
       return res.status(404).send("Запись не найдена");
     }
-    res.status(200).json(result.rows[0]);
+
+    const deletedRecord = result.rows[0];
+
+    // Логирование удаления записи
+    const message = `🗑️ Удалена запись для вагона ${deletedRecord.wagon_number}.
+    Заказчик: ${deletedRecord.customer}, Тип ремонта: ${deletedRecord.repair_type}`;
+    
+    // Отправка сообщения в Telegram (если нужно)
+    telegram(message);
+
+    res.status(200).json(deletedRecord);
   } catch (error) {
     console.error(error);
     res.status(500).send("Ошибка при удалении записи");
   }
 });
+
 
 module.exports = app;

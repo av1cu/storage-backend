@@ -333,11 +333,17 @@ router.delete('/:id', authenticate, async (req, res) => {
 
     // Получаем номер вагона и текущую дату
     const wagonNumber = result.rows[0].wagonNumber;
-    const currentDate = new Date().toLocaleString(); // Текущая дата и время
-    
+    const currentDate = new Date().toLocaleString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }); // Текущая дата и время
+    const creator = req.user.username;
     // Формируем сообщение для Telegram
     const message = `🚆 Вагон с номером ${wagonNumber} был удален.
-📝 Удалено пользователем: ${user ? user.name : 'Неизвестный'}
+📝 Удалено пользователем: ${creator}
 📅 Дата и время удаления: ${currentDate}`;
 
     // Отправка сообщения в Telegram

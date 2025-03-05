@@ -7,6 +7,7 @@ const cors = require('cors');
 const pool = require("../config/db"); // <-- Импортируем общее подключение
 const router = express();
 const authenticate = require('../auth/authorization'); 
+const telegram = require("../sender/totelegram")
 
 router.use(bodyParser.json());
 router.use(cors()); // Разрешить все источники
@@ -102,7 +103,7 @@ router.get('/:id',authenticate, async (req, res) => {
   }
 });
 
-router.post('/',authenticate, async (req, res) => {
+router.post('/', authenticate, async (req, res) => {
   const {
     wagonnumber,
     wagontype,
@@ -118,13 +119,20 @@ router.post('/',authenticate, async (req, res) => {
 
   try {
     // Генерация workGroupStatus из workgroup
-    const workGroupStatus = workgroup.map((work) => ({
-      value: work,
-      status: 'В ожидании',
-    }));
+    const workGroupStatus = Array.isArray(workgroup)
+      ? workgroup.map((work) => ({ value: work, status: 'В ожидании' }))
+      : [];
 
     // Преобразование workGroupStatus в строку JSON
     const workGroupStatusJSON = JSON.stringify(workGroupStatus);
+    const createdAt = new Date().toLocaleString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const creator = req.user.username; // Берем имя пользователя из токена
 
     const result = await pool.query(
       `INSERT INTO trains (
@@ -147,12 +155,27 @@ router.post('/',authenticate, async (req, res) => {
       ]
     );
 
+    // Создание строки с дополнительной информацией для Telegram
+    const workGroupNames = workgroup.join(', '); // Преобразуем массив workgroup в строку
+    const message = `🚆 Создан вагон номер ${wagonnumber}
+📅 Дата: ${createdAt}
+👤 Пользватель: ${creator}
+🔧 Тип вагона: ${wagontype}
+🛠️ Заказчик: ${customer}
+📝 Группы работ: ${workGroupNames}
+📋 Работы: ${workname}
+👨‍🔧 Исполнитель: ${executor}`;
+
+    // Отправка сообщения в Telegram
+    telegram(message);
+
     res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to create train' });
   }
 });
+
 
 
 router.put('/:id',authenticate, async (req, res) => {
@@ -184,16 +207,19 @@ router.put('/:id',authenticate, async (req, res) => {
 
     let updatedWorkgroupStatus = currentDataResult.rows[0].workgroupstatus || [];
     let currentStatus = currentDataResult.rows[0].status || '';  // Текущий статус вагона
-
+    const changes = [];
     // Если workgroupStatus передан, обновляем его
     if (workgroupStatus && workgroupStatus.length > 0) {
-      // Обновляем статус в переданном workgroupStatus
+      // Логирование изменений workgroupStatus
+      
+
       updatedWorkgroupStatus = updatedWorkgroupStatus.map(item => {
-        if (workgroupStatus.some(ws => ws.value === item.value)) {
-          return {
-            ...item,
-            status: workgroupStatus.find(ws => ws.value === item.value).status
-          };
+        const newStatus = workgroupStatus.find(ws => ws.value === item.value);
+        if (newStatus && newStatus.status !== item.status) {
+          // Создаем строку с описанием изменения
+          const changeDescription = `Статус группы работ "${item.value}" изменился с "${item.status}" на "${newStatus.status}"`;
+          changes.push(changeDescription);
+          return { ...item, status: newStatus.status };
         }
         return item;
       });
@@ -209,6 +235,8 @@ router.put('/:id',authenticate, async (req, res) => {
       newWagonStatus = 'Готово';  // Если все группы в статусе "Готово"
     } else if (allStatuses.includes('В процессе')) {
       newWagonStatus = 'В процессе';  // Если хотя бы одна группа в процессе
+    } else{
+      newWagonStatus = 'Не начато'
     }
 
     // Преобразуем updatedWorkgroupStatus в строку JSON
@@ -253,6 +281,30 @@ router.put('/:id',authenticate, async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Train not found' });
     }
+    // Формируем сообщение для Telegram
+    const creator = req.user.username;
+    const createdAt = new Date().toLocaleString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const workGroupNames = workgroup.join(', '); // Преобразуем массив workgroup в строку
+    const message = `🚆 Вагон обновлен: номер ${wagonNumber}
+📅 Дата: ${createdAt}
+👤 Пользватель: ${creator}
+🔧 Тип вагона: ${wagonType}
+🛠️ Заказчик: ${customer}
+📝 Группы работ: ${workGroupNames}
+📋 Работы: ${workname}
+👨‍🔧 Исполнитель: ${executor}
+
+💬 Изменения в группах работ:
+${changes.join('\n')}`;
+
+    // Отправка сообщения в Telegram
+    telegram(message);
 
     // Возвращаем обновленные данные
     res.json(result.rows[0]);
@@ -266,38 +318,39 @@ router.put('/:id',authenticate, async (req, res) => {
 
 
 // 5. Удаление записи по ID
-router.delete('/:id',authenticate, async (req, res) => {
+router.delete('/:id', authenticate, async (req, res) => {
   const { id } = req.params;
+  const { user } = req;  // Предполагается, что объект user доступен в запросе
   try {
     const result = await pool.query(
       'DELETE FROM trains WHERE id = $1 RETURNING *',
       [id]
     );
+    
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Train not found' });
     }
+
+    // Получаем номер вагона и текущую дату
+    const wagonNumber = result.rows[0].wagonNumber;
+    const currentDate = new Date().toLocaleString(); // Текущая дата и время
+    
+    // Формируем сообщение для Telegram
+    const message = `🚆 Вагон с номером ${wagonNumber} был удален.
+📝 Удалено пользователем: ${user ? user.name : 'Неизвестный'}
+📅 Дата и время удаления: ${currentDate}`;
+
+    // Отправка сообщения в Telegram
+    telegram(message);
+
+    // Ответ клиенту
     res.json({ message: 'Train deleted', train: result.rows[0] });
+    
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Failed to delete train' });
   }
 });
 
-module.exports = router;
-// 5. Удаление записи по ID
-router.delete('/:id', async (req, res) => {
-  const { id } = req.params;
-  try {
-    const result = await pool.query(
-      'DELETE FROM trains WHERE id = $1 RETURNING *',
-      [id]
-    );
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Train not found' });
-    }
-    res.json({ message: 'Train deleted', train: result.rows[0] });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to delete train' });
-  }
-});
 
 module.exports = router;

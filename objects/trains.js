@@ -176,7 +176,7 @@ router.post('/', authenticate, async (req, res) => {
 });
 
 
-router.put('/:id',authenticate, async (req, res) => {
+router.put('/:id', authenticate, async (req, res) => {
   const { id } = req.params;
   const {
     wagonNumber,
@@ -235,6 +235,21 @@ router.put('/:id',authenticate, async (req, res) => {
     // Преобразуем updatedWorkgroupStatus в строку JSON
     const updatedWorkgroupStatusJson = JSON.stringify(updatedWorkgroupStatus);
 
+    // Сравнение старых и новых значений workgroupstatus
+    const changes = [];
+    updatedWorkgroupStatus.forEach((newItem) => {
+      const oldItem = currentDataResult.rows[0].workgroupstatus.find(item => item.value === newItem.value);
+      if (oldItem && oldItem.status !== newItem.status) {
+        changes.push(`Группа работы "${newItem.value}" изменила статус с "${oldItem.status}" на "${newItem.status}"`);
+      }
+    });
+    const creator = req.user.username; // Берем имя пользователя из токена
+    // Если есть изменения, отправляем оповещение через Telegram
+    if (changes.length > 0) {
+      const message = `Изменения статусов групп работ для вагона ${wagonNumber}:\n${changes.join('\n')}\n Пользватель: ${creator}`;
+      telegram(message);  // Здесь вызываем функцию для отправки сообщения через Telegram
+    }
+
     // Выполнение основного запроса с обновленными данными
     const result = await pool.query(
       `UPDATE trains
@@ -282,6 +297,7 @@ router.put('/:id',authenticate, async (req, res) => {
     res.status(500).json({ error: 'Internal server error', details: err.message });
   }
 });
+
 
 
 

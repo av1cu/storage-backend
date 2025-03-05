@@ -7,6 +7,7 @@ const cors = require('cors');
 const pool = require("../config/db"); // <-- Импортируем общее подключение
 const router = express();
 const authenticate = require('../auth/authorization'); 
+const telegram = require('../sender/totelegram')
 
 router.use(bodyParser.json());
 router.use(cors()); // Разрешить все источники

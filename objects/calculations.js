@@ -3,6 +3,7 @@ const bodyParser = require("body-parser");
 const cors = require('cors');
 const pool = require("../config/db"); // <-- Импортируем общее подключение
 const authenticate = require('../auth/authorization'); 
+const telegram = require('../sender/totelegram')
 
 const app = express();
 app.use(bodyParser.json());

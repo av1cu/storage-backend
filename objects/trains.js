@@ -7,7 +7,6 @@ const cors = require('cors');
 const pool = require("../config/db"); // <-- Импортируем общее подключение
 const router = express();
 const authenticate = require('../auth/authorization'); 
-const telegram = require("../sender/totelegram")
 
 router.use(bodyParser.json());
 router.use(cors()); // Разрешить все источники
@@ -177,7 +176,6 @@ router.post('/', authenticate, async (req, res) => {
 });
 
 
-
 router.put('/:id',authenticate, async (req, res) => {
   const { id } = req.params;
   const {
@@ -207,19 +205,16 @@ router.put('/:id',authenticate, async (req, res) => {
 
     let updatedWorkgroupStatus = currentDataResult.rows[0].workgroupstatus || [];
     let currentStatus = currentDataResult.rows[0].status || '';  // Текущий статус вагона
-    const changes = [];
+
     // Если workgroupStatus передан, обновляем его
     if (workgroupStatus && workgroupStatus.length > 0) {
-      // Логирование изменений workgroupStatus
-      
-
+      // Обновляем статус в переданном workgroupStatus
       updatedWorkgroupStatus = updatedWorkgroupStatus.map(item => {
-        const newStatus = workgroupStatus.find(ws => ws.value === item.value);
-        if (newStatus && newStatus.status !== item.status) {
-          // Создаем строку с описанием изменения
-          const changeDescription = `Статус группы работ "${item.value}" изменился с "${item.status}" на "${newStatus.status}"`;
-          changes.push(changeDescription);
-          return { ...item, status: newStatus.status };
+        if (workgroupStatus.some(ws => ws.value === item.value)) {
+          return {
+            ...item,
+            status: workgroupStatus.find(ws => ws.value === item.value).status
+          };
         }
         return item;
       });
@@ -235,8 +230,6 @@ router.put('/:id',authenticate, async (req, res) => {
       newWagonStatus = 'Готово';  // Если все группы в статусе "Готово"
     } else if (allStatuses.includes('В процессе')) {
       newWagonStatus = 'В процессе';  // Если хотя бы одна группа в процессе
-    } else{
-      newWagonStatus = 'Не начато'
     }
 
     // Преобразуем updatedWorkgroupStatus в строку JSON
@@ -281,30 +274,6 @@ router.put('/:id',authenticate, async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Train not found' });
     }
-    // Формируем сообщение для Telegram
-    const creator = req.user.username;
-    const createdAt = new Date().toLocaleString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-    const workGroupNames = workgroup.join(', '); // Преобразуем массив workgroup в строку
-    const message = `🚆 Вагон обновлен: номер ${wagonNumber}
-📅 Дата: ${createdAt}
-👤 Пользватель: ${creator}
-🔧 Тип вагона: ${wagonType}
-🛠️ Заказчик: ${customer}
-📝 Группы работ: ${workGroupNames}
-📋 Работы: ${workname}
-👨‍🔧 Исполнитель: ${executor}
-
-💬 Изменения в группах работ:
-${changes.join('\n')}`;
-
-    // Отправка сообщения в Telegram
-    telegram(message);
 
     // Возвращаем обновленные данные
     res.json(result.rows[0]);

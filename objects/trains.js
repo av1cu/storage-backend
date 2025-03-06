@@ -241,13 +241,20 @@ router.put('/:id', authenticate, async (req, res) => {
     updatedWorkgroupStatus.forEach((newItem) => {
       const oldItem = currentDataResult.rows[0].workgroupstatus.find(item => item.value === newItem.value);
       if (oldItem && oldItem.status !== newItem.status) {
-        changes.push(`Группа работы "${newItem.value}" изменила статус с "${oldItem.status}" на "${newItem.status}"`);
+        changes.push(`🔄Группа работы: "${newItem.value}"-"${oldItem.status}" ⏩ "${newItem.status}"`);
       }
     });
     const creator = req.user.username; // Берем имя пользователя из токена
     // Если есть изменения, отправляем оповещение через Telegram
+    const createdAt = new Date().toLocaleString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
     if (changes.length > 0) {
-      const message = `Изменения статусов групп работ для вагона ${wagonNumber}:\n${changes.join('\n')}\n Пользватель: ${creator}`;
+      const message = `🔨Изменения статусов групп работ вагона: ${wagonNumber}:\n${changes.join('\n')}\n👤Пользватель: ${creator}\n📅Дата: ${createdAt}`;
       telegram(message);  // Здесь вызываем функцию для отправки сообщения через Telegram
     }
 
@@ -306,8 +313,8 @@ router.put('/:id', authenticate, async (req, res) => {
 // 5. Удаление записи по ID
 router.delete('/:id', authenticate, async (req, res) => {
   const { id } = req.params;
-  const { user } = req;  // Предполагается, что объект user доступен в запросе
   try {
+
     const result = await pool.query(
       'DELETE FROM trains WHERE id = $1 RETURNING *',
       [id]
@@ -318,7 +325,7 @@ router.delete('/:id', authenticate, async (req, res) => {
     }
 
     // Получаем номер вагона и текущую дату
-    const wagonNumber = result.rows[0].wagonNumber;
+    const wagonNumber = result.rows[0].wagonnumber;
     const currentDate = new Date().toLocaleString('ru-RU', {
       day: '2-digit',
       month: '2-digit',
@@ -329,7 +336,7 @@ router.delete('/:id', authenticate, async (req, res) => {
     const creator = req.user.username;
     // Формируем сообщение для Telegram
     const message = `🚆 Вагон с номером ${wagonNumber} был удален.
-📝 Удалено пользователем: ${creator}
+👤 Удалено пользователем: ${creator}
 📅 Дата и время удаления: ${currentDate}`;
 
     // Отправка сообщения в Telegram

@@ -31,12 +31,13 @@ const login = async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRATION || '1d' } // Срок действия токена
     );
 
-    res.json({ token });  // Возвращаем токен клиенту
+    res.json({ token, username: user.username }); // Теперь возвращаем и username
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+
 
 // Логика регистрации
 const register = async (req, res) => {
